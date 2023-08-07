@@ -88,7 +88,7 @@ class Drawer:
                 y,x = event.pos
                 y //= self.resolution
                 x //= self.resolution
-                if self.selected:
+                if self.selected and (0 <= x < 8) and (0 <= y < 8):
                     integers = [self.selected[0], self.selected[1], x, y, self.turn,4]
                     # Pack the integers into a binary format
                     message = struct.pack('!6i', *integers) # ! denotes network byte order, 5I denotes five unsigned integers

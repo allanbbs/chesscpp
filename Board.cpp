@@ -93,6 +93,9 @@ void Board::initBoard() {
     };
 
     whiteKingPosition = {7,4};
+
+    // TODO kings can eat its own pieces, at least horizontally
+    // TODO develop a test suite to allow checking if changes did not break any rules
 }
 
 std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y) const{
