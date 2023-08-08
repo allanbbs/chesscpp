@@ -5,15 +5,11 @@
 #ifndef CHESS_PIECE_H
 #define CHESS_PIECE_H
 #include <iostream>
-enum PIECE_TYPE {
-    PAWN ,
-    BISHOP,
-    KNIGHT,
-    ROOK,
-    QUEEN,
-    KING,
-    EMPTY
-};
+#include "chess_constants.h"
+
+/*
+ * if weird stuff starts happening (circular linking and such, define the PIECE_TYPE here again
+ */
 
 class Piece {
 public:

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include <chrono>
+#include "chess_constants.h"
 #include "Board.h"
 #include "move_utils.h"
 #include "helper.h"
@@ -13,21 +14,21 @@ const std::vector<std::vector<Piece>> &Board::getBoard() const {
     return board;
 }
 
-void Board::setBoard(const std::vector<std::vector<Piece>> &board) {
-    Board::board = board;
+void Board::setBoard(const std::vector<std::vector<Piece>> &b) {
+    board = b;
 }
 
 int Board::getTurn() const {
     return turn;
 }
 
-void Board::setTurn(int turn) {
-    Board::turn = turn;
+void Board::setTurn(int t) {
+    turn = t;
 }
 
 void Board::display() const {
     for(auto it = board.begin(); it != board.end(); it++) {
-        std::string line = "";
+        std::string line;
         for(auto it2 = it->begin(); it2 != it->end(); it2++) {
             std::cout << *it2 << " ";
         }
@@ -94,7 +95,7 @@ void Board::initBoard() {
 
     whiteKingPosition = {7,4};
 
-    // TODO kings can eat its own pieces, at least horizontally
+    // TODO check castling for check squares
     // TODO develop a test suite to allow checking if changes did not break any rules
 }
 
@@ -132,30 +133,17 @@ std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y) const{
             break;
         }
     }
-    //checkmate = false;
-    //stalemate = false;
     auto currentKingPos = turn == 1? whiteKingPosition : blackKingPosition;
     auto currentKingPiece = board.at(currentKingPos.first).at(currentKingPos.second);
-    if(currentKingPiece.isUnderAttack()){ //if the current player is in check
-        std::vector<Move> filteredMoves;
-        std::copy_if(result.begin(),result.end(),std::back_inserter(filteredMoves),[&](Move m){
-            Board temp = this->moveCopy(x,y,m);
-            auto tempKingPos = temp.turn == 1? temp.blackKingPosition : temp.whiteKingPosition;
-            auto tempKingPiece = temp.board.at(tempKingPos.first).at(tempKingPos.second);
-            return !tempKingPiece.isUnderAttack();
-        });
-        return filteredMoves;
+    Board temp = *this; // One copy of the board, to not break the const qualifier of this function.
+
+    if(currentKingPiece.isUnderAttack()){
+        filterInCheckMoves(result, temp,x, y);
+    } else {
+        filterInCheckMoves(result, temp,x, y);
     }
-    else{
-        std::vector<Move> filteredMoves;
-        std::copy_if(result.begin(),result.end(),std::back_inserter(filteredMoves),[&](Move m){
-            Board temp = this->moveCopy(x,y,m);
-            auto tempKingPos = turn == 1? temp.whiteKingPosition : temp.blackKingPosition;
-            auto tempKingPiece = temp.board.at(tempKingPos.first).at(tempKingPos.second);
-            return !tempKingPiece.isUnderAttack();
-        });
-        return filteredMoves;
-    }
+
+    return result;
 }
 
 bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, PIECE_TYPE promotionType) {
@@ -164,7 +152,6 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
     Piece next = board.at(x1).at(y1);
     bool hideEnPassantPawns = true;
     std::cout << "Moving " << temp << std::endl;
-    std::cout << x0 << " " << y0 << " -> " << x1 << " " << y1 << std::endl;
     if(temp.getPlayer() != turn)
         return false;
     auto start = std::chrono::high_resolution_clock::now();
@@ -176,13 +163,13 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
     if(move == moves.end())
         return false;
     if(move->castle) {
-        Piece oldRook = next;
+        //Piece oldRook = next; Commented to avoid copy, but in this execution path, next is a rook
         board.at(x1).at(y1) = Piece();
         board.at(x0).at(y0) = Piece();
 
-        if(x1 == 0 && y1 == 0){
+        if((x1 == 0 && y1 == 0) || (x1 == 7 && y1 == 0)){
             board.at(x0).at(y0-2) = temp;
-            board.at(x0).at(y0-1) = oldRook;
+            board.at(x0).at(y0-1) = next;
             board.at(x0).at(y0-2).setMoved(true);
             board.at(x0).at(y0-1).setMoved(true);
             updatePieceTrackers(temp,x0,y0-2); //king
@@ -190,36 +177,15 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
             lastFrom = Move(x0,y0);
             lastTo = Move(x1,y1);
         }
-        else if(x1 == 0 && y1 == 7) {
+        else if((x1 == 0 && y1 == 7) || (x1 == 7 && y1 == 7)) {
             board.at(x0).at(y0+2) = temp;
-            board.at(x0).at(y0+1) = oldRook;
+            board.at(x0).at(y0+1) = next;
             board.at(x0).at(y0+2).setMoved(true);
             board.at(x0).at(y0+1).setMoved(true);
             updatePieceTrackers(temp,x0,y0+2); //king
             updatePieceTrackers(temp,x0,y0+1); //rook
             lastFrom = Move(x0,y0);
             lastTo = Move(x1,y1);
-        }
-        else if(x1 == 7 && y1 == 0) {
-            board.at(x0).at(y0-2) = temp;
-            board.at(x0).at(y0-1) = oldRook;
-            board.at(x0).at(y0-2).setMoved(true);
-            board.at(x0).at(y0-1).setMoved(true);
-            updatePieceTrackers(temp,x0,y0-2); //king
-            updatePieceTrackers(temp,x0,y0-1); //rook
-            lastFrom = Move(x0,y0);
-            lastTo = Move(x1,y1);
-        }
-        else if(x1 == 7 && y1 == 7) {
-            board.at(x0).at(y0+2) = temp;
-            board.at(x0).at(y0+1) = oldRook;
-            board.at(x0).at(y0+2).setMoved(true);
-            board.at(x0).at(y0+1).setMoved(true);
-            updatePieceTrackers(temp,x0,y0+2); //king
-            updatePieceTrackers(temp,x0,y0+1); //rook
-            lastFrom = Move(x0,y0);
-            lastTo = Move(x1,y1);
-
         }
 
     }
@@ -245,13 +211,10 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
         updatePieceTrackers(temp,x1,y1);
     }
 
-    bool check = verifyCheck(this);
+    bool check = verifyCheck(this,turn == 1? 0 : 1);
     auto opposingKingPos = turn == 1?blackKingPosition : whiteKingPosition;
     board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     turn = turn == 1? 0 : 1;
-    check = verifyCheck(this);
-    opposingKingPos = turn == 1 ?blackKingPosition : whiteKingPosition;
-    board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     if(hideEnPassantPawns)
         hideEnPassant();
     moves.clear();
@@ -271,38 +234,25 @@ bool Board::moveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
         board.at(move.x).at(move.y) = Piece();
         board.at(x0).at(y0) = Piece();
 
-        if(move.x == 0 && move.y == 0){
+        if((move.x == 0 && move.y == 0) || (move.x == 7 && move.y == 0)){
             board.at(x0).at(y0-2) = temp;
             board.at(x0).at(y0-1) = oldRook;
             board.at(x0).at(y0-2).setMoved(true);
             board.at(x0).at(y0-1).setMoved(true);
             updatePieceTrackers(temp,x0,y0-2); //king
             updatePieceTrackers(temp,x0,y0-1); //rook
+            lastFrom = Move(x0,y0);
+            lastTo = Move(move.x,move.y);
         }
-        else if(move.x == 0 && move.y == 7) {
+        else if((move.x == 0 && move.y == 7) || (move.x == 7 && move.y == 7)) {
             board.at(x0).at(y0+2) = temp;
             board.at(x0).at(y0+1) = oldRook;
             board.at(x0).at(y0+2).setMoved(true);
             board.at(x0).at(y0+1).setMoved(true);
             updatePieceTrackers(temp,x0,y0+2); //king
             updatePieceTrackers(temp,x0,y0+1); //rook
-        }
-        else if(move.x == 7 && move.y == 0) {
-            board.at(x0).at(y0-2) = temp;
-            board.at(x0).at(y0-1) = oldRook;
-            board.at(x0).at(y0-2).setMoved(true);
-            board.at(x0).at(y0-1).setMoved(true);
-            updatePieceTrackers(temp,x0,y0-2); //king
-            updatePieceTrackers(temp,x0,y0-1); //rook
-        }
-        else if(move.x == 7 && move.y == 7) {
-            board.at(x0).at(y0+2) = temp;
-            board.at(x0).at(y0+1) = oldRook;
-            board.at(x0).at(y0+2).setMoved(true);
-            board.at(x0).at(y0+1).setMoved(true);
-            updatePieceTrackers(temp,x0,y0+2); //king
-            updatePieceTrackers(temp,x0,y0+1); //rook
-
+            lastFrom = Move(x0,y0);
+            lastTo = Move(move.x,move.y);
         }
 
     }
@@ -326,13 +276,10 @@ bool Board::moveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
         updatePieceTrackers(temp,move.x,move.y);
     }
 
-    bool check = verifyCheck(this);
+    bool check = verifyCheck(this,turn == 1? 0 : 1);
     auto opposingKingPos = turn == 1?blackKingPosition : whiteKingPosition;
     board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     turn = turn == 1? 0 : 1;
-    check = verifyCheck(this);
-    opposingKingPos = turn == 1 ?blackKingPosition : whiteKingPosition;
-    board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     if(hideEnPassantPawns)
         hideEnPassant();
     return true;
@@ -343,7 +290,7 @@ bool Board::moveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
 std::string Board::toJSON() const {
     std::string result = "[";
     std::ostringstream st;
-    st << "{\"state\":\""<< (stalemate? "stalemate" : (checkmate? "checkmate" : "progress")) << "\",";
+    st << R"({"state":")"<< (stalemate? "stalemate" : (checkmate? "checkmate" : "progress")) << "\",";
     st << "\"winner\":"<< winner << "},";
     result += st.str();
     result += "[";
@@ -359,11 +306,8 @@ std::string Board::toJSON() const {
             temp << "\"pinned\":" << print_bool(piece.isPinned()) << ",";
             temp << "\"moved\":" << print_bool(piece.hasMoved());
             temp << "}";
-            if(i == 7 && j == 7)
-                1;
-            else {
+            if(!(i == 7 && j == 7))
                 temp << ",";
-            }
             result += temp.str();
         }
     }
@@ -380,7 +324,7 @@ void Board::hideEnPassant() {
     }
 }
 
-void Board::updatePieceTrackers(Piece p, unsigned int x, unsigned int y) {
+void Board::updatePieceTrackers(const Piece& p, unsigned int x, unsigned int y) {
     switch (p.getType()) {
         case KING: {
             if(p.getPlayer() == 1)
@@ -396,16 +340,16 @@ const std::pair<unsigned int, unsigned int> &Board::getWhiteKingPosition() const
     return whiteKingPosition;
 }
 
-void Board::setWhiteKingPosition(const std::pair<unsigned int, unsigned int> &whiteKingPosition) {
-    Board::whiteKingPosition = whiteKingPosition;
+void Board::setWhiteKingPosition(const std::pair<unsigned int, unsigned int> &w) {
+    whiteKingPosition = w;
 }
 
 const std::pair<unsigned int, unsigned int> &Board::getBlackKingPosition() const {
     return blackKingPosition;
 }
 
-void Board::setBlackKingPosition(const std::pair<unsigned int, unsigned int> &blackKingPosition) {
-    Board::blackKingPosition = blackKingPosition;
+void Board::setBlackKingPosition(const std::pair<unsigned int, unsigned int> &b) {
+    blackKingPosition = b;
 }
 
 Board Board::moveCopy(unsigned int x0, unsigned int y0, Move move) const{
@@ -416,7 +360,7 @@ Board Board::moveCopy(unsigned int x0, unsigned int y0, Move move) const{
     return copy;
 }
 
-bool Board::isGameOver() {
+bool Board::isGameOver() const {
     return isCheckmate() || isStalemate();
 }
 
@@ -429,11 +373,24 @@ bool Board::isStalemate() const {
 }
 
 double Board::evaluate() const{
-    return 0;
+    double boardScore = 0;
+    for(auto& row : board) {
+        for(auto& piece : row) {
+            if(piece.getType() == EMPTY)
+                continue;
+            double value = PIECE_VALUE.at(piece.getType());
+            if(piece.getPlayer() == turn) {
+                boardScore += value;
+            } else {
+                boardScore -= value;
+            }
+        }
+    }
+    return boardScore;
 }
 
 
-std::pair<double,std::pair<Move,Move>> Board::minimax(Board b,int depth, double alpha, double beta, bool isMaximizingPlayer) {
+std::pair<double,std::pair<Move,Move>> Board::minimax(const Board& b,int depth, double alpha, double beta, bool isMaximizingPlayer) {
     if(depth == 0)
         return {b.evaluate(),{b.lastFrom,b.lastTo}};
     if(isMaximizingPlayer) {
@@ -447,7 +404,7 @@ std::pair<double,std::pair<Move,Move>> Board::minimax(Board b,int depth, double 
             auto res = minimax(temp,depth-1,alpha,beta,false);
             if(res.first > bestValue){
                 bestValue = res.first;
-                bestMove = res.second;
+                bestMove = {m1,m2};
             }
             alpha = std::max(alpha,bestValue);
             if(beta <= alpha)
@@ -466,7 +423,7 @@ std::pair<double,std::pair<Move,Move>> Board::minimax(Board b,int depth, double 
             auto res = minimax(temp,depth-1,alpha,beta,true);
             if(res.first < bestValue){
                 bestValue = res.first;
-                bestMove = res.second;
+                bestMove = {m1,m2};
             }
             beta = std::min(beta,bestValue);
             if(beta <= alpha)
@@ -494,11 +451,6 @@ std::vector<std::pair<Move,Move>> Board::generateAllMoves(const Board& b,int pla
             }
         }
     }
-    std::cout << "--------------------------------------------------------"<< std::endl;
-    for(auto p : result){
-        std::cout<< p.first << " -> " << p.second << std::endl;
-    }
-    std::cout << "--------------------------------------------------------"<< std::endl;
     return result;
 
 }

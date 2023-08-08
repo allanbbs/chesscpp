@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstring>
-#include <limits>
 #include "Board.h"
 int server_fd, new_socket;
 
@@ -20,7 +19,12 @@ void atexit() {
 int main() {
 
     std::atexit(atexit);
-    struct sockaddr_in address;
+    struct sockaddr_in address{};
+    // Attach socket to the port 8080
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(8080);
+
     int opt = 1;
     int addrlen = sizeof(address);
     char buffer[24] = {0};
@@ -36,10 +40,7 @@ int main() {
         return -1;
     }
 
-    // Attach socket to the port 8080
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(8080);
+
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         std::cerr << "Bind failed";
@@ -56,7 +57,11 @@ int main() {
 
     Board b = Board();
     while(true) {
-        read(new_socket, buffer, 4*6);
+        ssize_t readBytes = read(new_socket, buffer, 4*6);
+        if(readBytes == -1) {
+            std::cerr << "Something went wrong from reading socket!" << std::endl;
+            break;
+        }
         int32_t x0,y0,x1,y1,player,promotionType;
         std::memcpy(&x0, buffer, sizeof(int));
         std::memcpy(&y0, buffer + sizeof(int), sizeof(int));
@@ -80,13 +85,15 @@ int main() {
         if(x1 == -1 && y1 == -1 && player == -1)
             break;
         if(b.move(x0, y0, x1, y1, static_cast<PIECE_TYPE>(promotionType == EMPTY ? EMPTY : promotionType))){
-            /*auto res = Board::minimax(b,3,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
+            /*auto res = Board::minimax(b,5,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
             Move m1 = res.second.first;
             Move m2 = res.second.second;
+            b.moveWithoutVerifying(m1.x,m1.y,m2);
             std::cout << "(" << m1.x << "," << m1.y << ") -> (" << m2.x << "," << m2.y << ")" <<  std::endl;*/
         }
         std::cout << (b.isGameOver() ? "Yes" : "No") << std::endl;
-        auto json = b.toJSON().c_str();
+        std::string jsonString = b.toJSON();
+        const char* json = jsonString.c_str();
         send(new_socket, json,strlen(json) , 0);
         std::cout << "Message sent\n";
 
@@ -94,7 +101,5 @@ int main() {
     close(new_socket);
     close(server_fd);
     std::cout << "Game finished!" << std::endl;
-    return 0;
-
     return 0;
 }

@@ -5,6 +5,7 @@
 #ifndef CHESS_MOVE_H
 #define CHESS_MOVE_H
 #include <vector>
+#include "chess_constants.h"
 #include "Piece.h"
 
 class Move {

@@ -50,16 +50,16 @@ bool Piece::isEnPassantExposed() const {
     return enPassantExposed;
 }
 
-void Piece::setEnPassantExposed(bool enPassantExposed) {
-    Piece::enPassantExposed = enPassantExposed;
+void Piece::setEnPassantExposed(bool e) {
+    enPassantExposed = e;
 }
 
 bool Piece::isUnderAttack() const {
     return underAttack;
 }
 
-void Piece::setUnderAttack(bool underAttack) {
-    Piece::underAttack = underAttack;
+void Piece::setUnderAttack(bool u) {
+    underAttack = u;
 }
 
 bool Piece::isPinned() const {

@@ -23,7 +23,7 @@ public:
     bool move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, PIECE_TYPE promotionType = EMPTY);
     Board moveCopy(unsigned int x0,unsigned int y0, Move move) const;
 
-    void updatePieceTrackers(Piece p,unsigned int x,unsigned int y);
+    void updatePieceTrackers(const Piece& p,unsigned int x,unsigned int y);
 
     const std::vector<std::vector<Piece>> &getBoard() const;
 
@@ -47,13 +47,13 @@ public:
 
     void setBlackKingPosition(const std::pair<unsigned int, unsigned int> &blackKingPosition);
 
-    bool isGameOver();
+    bool isGameOver() const;
 
     bool isCheckmate() const;
 
     bool isStalemate() const;
 
-    static std::pair<double, std::pair<Move,Move>> minimax(Board b,int depth, double alpha, double beta, bool isMaximizingPlayer);
+    static std::pair<double, std::pair<Move,Move>> minimax(const Board& b,int depth, double alpha, double beta, bool isMaximizingPlayer);
 
     bool moveWithoutVerifying(unsigned int x0, unsigned int y0, Move m1);
 private:
