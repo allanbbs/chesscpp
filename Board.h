@@ -18,7 +18,7 @@ public:
 
 
 
-    std::vector<Move> getLegalMoves(unsigned int x, unsigned int y) const;
+    std::vector<Move> getLegalMoves(unsigned int x, unsigned int y);
 
     bool move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, PIECE_TYPE promotionType = EMPTY);
     Board moveCopy(unsigned int x0,unsigned int y0, Move move) const;
@@ -53,9 +53,11 @@ public:
 
     bool isStalemate() const;
 
-    static std::pair<double, std::pair<Move,Move>> minimax(const Board& b,int depth, double alpha, double beta, bool isMaximizingPlayer);
+    static std::pair<double, std::pair<Move,Move>> minimax(Board& b,int depth, double alpha, double beta, bool isMaximizingPlayer);
 
     bool moveWithoutVerifying(unsigned int x0, unsigned int y0, Move m1);
+    int winner = -1;
+
 private:
     void initBoard();
     std::vector<std::vector<Piece>> board;
@@ -64,7 +66,6 @@ private:
     std::pair<unsigned int,unsigned int> blackKingPosition;
     bool checkmate = false;
     bool stalemate = false;
-    int winner = -1;
 
     Move lastFrom = Move(0,0);
     Move lastTo = Move(0,0);
@@ -75,7 +76,9 @@ private:
     double evaluate() const;
 
 
-    static std::vector<std::pair<Move,Move>> generateAllMoves(const Board& b,int player);
+    static std::vector<std::pair<Move,Move>> generateAllMoves(Board& b,int player);
+
+    bool executeMove(unsigned int x0, unsigned int y0, Move move, PIECE_TYPE promotionType);
 };
 
 

@@ -84,14 +84,23 @@ int main() {
 
         if(x1 == -1 && y1 == -1 && player == -1)
             break;
-        if(b.move(x0, y0, x1, y1, static_cast<PIECE_TYPE>(promotionType == EMPTY ? EMPTY : promotionType))){
+        if(b.isGameOver()) {
+
+            std::cout<<"Game over!"<< (b.isCheckmate()? (b.winner == 0? "Black has won!" : "White has won!") : "Stalemate!") << std::endl;
+            std::string jsonString = b.toJSON();
+            const char* json = jsonString.c_str();
+            send(new_socket, json,strlen(json) , 0);
+            break;
+        }
+        if(b.move(x0, y0, x1, y1, static_cast<PIECE_TYPE>(promotionType))){
             /*auto res = Board::minimax(b,5,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
             Move m1 = res.second.first;
             Move m2 = res.second.second;
             b.moveWithoutVerifying(m1.x,m1.y,m2);
             std::cout << "(" << m1.x << "," << m1.y << ") -> (" << m2.x << "," << m2.y << ")" <<  std::endl;*/
         }
-        std::cout << (b.isGameOver() ? "Yes" : "No") << std::endl;
+        //b.display();
+        //std::cout << (b.isGameOver() ? "Yes" : "No") << std::endl;
         std::string jsonString = b.toJSON();
         const char* json = jsonString.c_str();
         send(new_socket, json,strlen(json) , 0);

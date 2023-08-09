@@ -16,6 +16,7 @@ public:
     explicit Piece(PIECE_TYPE type,int p) : type(type),player(p){}
     Piece();
     Piece(const Piece& p);
+    void setPlayer(int p) {player = p;}
     PIECE_TYPE getType() const;
     void setType(PIECE_TYPE t) { type = t;}
     friend std::ostream & operator<<(std::ostream &o, const Piece& p);
