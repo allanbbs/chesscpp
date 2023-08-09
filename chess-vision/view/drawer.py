@@ -102,6 +102,8 @@ class Drawer:
                     #newBoard = json.loads(newBoard)
                     if self.state["state"] != "progress":
                         print("Stalemate!" if self.state["state"] == "stalemate" else "Checkmate!","White" if self.state["winner"] == 1 else "Black","won!")
+                        pygame.quit()
+                        return True
                     for i in range(8):
                         for j in range(8):
                             self.board[i][j] = newBoard[i*8 + j]

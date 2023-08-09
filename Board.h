@@ -18,7 +18,7 @@ public:
 
 
 
-    std::vector<Move> getLegalMoves(unsigned int x, unsigned int y);
+    std::vector<Move> getLegalMoves(unsigned int x, unsigned int y) const;
 
     bool move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int y1, PIECE_TYPE promotionType = EMPTY);
     Board moveCopy(unsigned int x0,unsigned int y0, Move move) const;
@@ -56,7 +56,12 @@ public:
     static std::pair<double, std::pair<Move,Move>> minimax(Board& b,int depth, double alpha, double beta, bool isMaximizingPlayer);
 
     bool moveWithoutVerifying(unsigned int x0, unsigned int y0, Move m1);
+    bool executeMoveWithoutVerifying(unsigned int x0, unsigned int y0, Move move);
     int winner = -1;
+
+    static std::vector<std::pair<Move,Move>> generateAllMoves(const Board& b,int player);
+
+    void loadFEN(std::string moveSequence);
 
 private:
     void initBoard();
@@ -70,15 +75,17 @@ private:
     Move lastFrom = Move(0,0);
     Move lastTo = Move(0,0);
 
+    bool canCastleKingSide[2] = {true,true};
+
 
 
 
     double evaluate() const;
 
 
-    static std::vector<std::pair<Move,Move>> generateAllMoves(Board& b,int player);
-
     bool executeMove(unsigned int x0, unsigned int y0, Move move, PIECE_TYPE promotionType);
+
+
 };
 
 

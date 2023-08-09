@@ -25,4 +25,19 @@ inline const std::map<PIECE_TYPE,double> PIECE_VALUE{
     {QUEEN,9},
     {KING, 0}
 };
+
+inline const std::map<char,PIECE_TYPE> femPieceMap{
+    {'p',PAWN},
+    {'r',ROOK},
+    {'b',BISHOP},
+    {'q',QUEEN},
+    {'k',KING},
+    {'n', KNIGHT},
+    {'P',PAWN},
+    {'R',ROOK},
+    {'B',BISHOP},
+    {'Q',QUEEN},
+    {'K',KING},
+    {'N', KNIGHT}
+};
 #endif //CHESS_CHESS_CONSTANTS_H

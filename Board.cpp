@@ -46,6 +46,35 @@ Board::Board() {
     initBoard();
 }
 
+void Board::loadFEN(std::string moveSequence) {
+    //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+
+
+    int piecePlacement = 0, playerToMove = 1, castlingRights = 2, enPassantTarget = 3, halfmoveClock = 4,fullCounter = 5;
+    std::istringstream iss(moveSequence);
+    std::vector<std::string> result;
+    std::string token;
+    while (std::getline(iss, token, ' ')) {
+        result.push_back(token);
+    }
+    int board1Dindex = 0;
+    for(char chr : result.at(piecePlacement)) {
+        if(chr == '/'){
+            continue;
+        }
+        else if(isdigit(chr)) {
+            int consecutiveEmptySpaces = chr - '0';
+            for(int i = 0;i < consecutiveEmptySpaces; i++)
+                board.at(board1Dindex/8).at(board1Dindex%8) = Piece();
+            board1Dindex += consecutiveEmptySpaces;
+        } else if(std::isalpha(chr)){
+            board.at(board1Dindex/8).at(board1Dindex%8) = Piece(femPieceMap.at(chr),std::islower(chr) ? 0 : 1);
+            board1Dindex++;
+        }
+    }
+
+}
+
 Board::Board(Board const &b) {
     board.resize(8);
     for(int i =0; i < 8; i++){
@@ -95,11 +124,10 @@ void Board::initBoard() {
 
     whiteKingPosition = {7,4};
 
-    // TODO check castling for check squares
     // TODO develop a test suite to allow checking if changes did not break any rules
 }
 
-std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y){
+std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y) const{
     Piece piece = board.at(x).at(y);
     std::vector<Move> result;
     switch (piece.getType()) {
@@ -139,16 +167,8 @@ std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y){
 
     if(currentKingPiece.isUnderAttack()){
         filterInCheckMoves(result, temp,x, y);
-        if(result.empty()){
-            checkmate = true;
-            winner = turn == 1? 0 : 1;
-        }
     } else {
         filterInCheckMoves(result, temp,x, y);
-        if(result.empty()) {
-            stalemate = true;
-            winner = turn == 1? 0 : 1;
-        }
     }
 
     return result;
@@ -172,13 +192,24 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
         return false;
 
     start = std::chrono::high_resolution_clock::now();
-    bool canMove = executeMove(x0,y0,*move,move->promotion_type);
+    bool canMove = executeMove(x0,y0,*move,promotionType == EMPTY ? move->promotion_type : promotionType);
     end = std::chrono::high_resolution_clock::now();
     if(canMove) {
         auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         std::cout << "Time taken to generate legal moves: " << duration1.count() << " microseconds" << std::endl;
         std::cout << "Time taken to execute move and verify check: " << duration2.count() << " microseconds" << std::endl;
         std::cout << "Time taken total: " << duration1.count() + duration2.count() << " microseconds" << std::endl;
+    }
+    auto allMovesRemaining = generateAllMoves(*this,turn);
+    auto opposingKingPos = turn == 1 ? whiteKingPosition:blackKingPosition;
+    if(allMovesRemaining.empty()) {
+        if(board.at(opposingKingPos.first).at(opposingKingPos.second).isUnderAttack()) {
+            std::cout<<"Checkmate"<<std::endl;
+            checkmate = true;
+        } else{
+            std::cout<<"Stalemate"<<std::endl;
+            stalemate = true;
+        }
     }
     return canMove;
 
@@ -190,8 +221,29 @@ bool Board::moveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
     if(temp.getPlayer() != turn)
         return false;
 
-    return executeMove(x0,y0,move,move.promotion_type);
+    bool canMove = executeMove(x0,y0,move,move.promotion_type);
+    auto allMovesRemaining = generateAllMoves(*this,turn);
+    auto opposingKingPos = turn == 1 ? whiteKingPosition:blackKingPosition;
+    if(allMovesRemaining.empty()) {
+        if(board.at(opposingKingPos.first).at(opposingKingPos.second).isUnderAttack()) {
+            std::cout<<"Checkmate"<<std::endl;
+            checkmate = true;
+        } else{
+            std::cout<<"Stalemate"<<std::endl;
+            stalemate = true;
+        }
+    }
+    return canMove;
 
+}
+
+bool Board::executeMoveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
+    Piece temp = board.at(x0).at(y0);
+    if(temp.getPlayer() != turn) {
+        return false;
+    }
+
+    return executeMove(x0, y0, move, move.promotion_type);
 }
 
 bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE promotionType){
@@ -237,7 +289,7 @@ bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE p
         }
 
         else if(move.promotion) {
-            temp.setType(move.promotion_type);
+            temp.setType(promotionType);
         }
 
         board.at(x0).at(y0) = Piece(EMPTY,0);
@@ -258,6 +310,7 @@ bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE p
     auto opposingKingPos = turn == 1?blackKingPosition : whiteKingPosition;
     board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     turn = turn == 1? 0 : 1;
+
     if(hideEnPassantPawns)
         hideEnPassant();
     return true;
@@ -330,7 +383,7 @@ void Board::setBlackKingPosition(const std::pair<unsigned int, unsigned int> &b)
 
 Board Board::moveCopy(unsigned int x0, unsigned int y0, Move move) const{
     Board copy = Board(*this);
-    copy.moveWithoutVerifying(x0,y0,move);
+    copy.executeMoveWithoutVerifying(x0,y0,move);
     copy.lastFrom = Move(x0,y0);
     copy.lastTo = move;
     return copy;
@@ -361,6 +414,18 @@ double Board::evaluate() const{
                 boardScore -= value;
             }
         }
+    }
+    if(isGameOver()) {
+        if(winner == -1)
+            boardScore += 0;
+        else{
+            if(winner == 1) {
+                boardScore += 10000;
+            }else{
+                boardScore -= 10000;
+            }
+        }
+        return boardScore;
     }
     return boardScore;
 }
@@ -412,7 +477,7 @@ std::pair<double,std::pair<Move,Move>> Board::minimax( Board& b,int depth, doubl
 
 }
 
-std::vector<std::pair<Move,Move>> Board::generateAllMoves( Board& b,int player) {
+std::vector<std::pair<Move,Move>> Board::generateAllMoves(const Board& b,int player) {
 
     std::vector<std::pair<Move,Move>> result;
 
