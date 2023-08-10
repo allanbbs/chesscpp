@@ -47,9 +47,11 @@ Board::Board() {
 }
 
 void Board::loadFEN(std::string moveSequence) {
-    //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-
-
+    for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++) {
+            board.at(i).at(j) = Piece(EMPTY,0);
+        }
+    }
     int piecePlacement = 0, playerToMove = 1, castlingRights = 2, enPassantTarget = 3, halfmoveClock = 4,fullCounter = 5;
     std::istringstream iss(moveSequence);
     std::vector<std::string> result;
@@ -69,7 +71,32 @@ void Board::loadFEN(std::string moveSequence) {
             board1Dindex += consecutiveEmptySpaces;
         } else if(std::isalpha(chr)){
             board.at(board1Dindex/8).at(board1Dindex%8) = Piece(femPieceMap.at(chr),std::islower(chr) ? 0 : 1);
+            if(chr == 'k') {
+                blackKingPosition = {board1Dindex/8,board1Dindex%8};
+            }
+            else if(chr == 'K'){
+                whiteKingPosition =  {board1Dindex/8,board1Dindex%8};
+            }
             board1Dindex++;
+        }
+    }
+
+    turn = result.at(playerToMove) == "w" ? 1: 0;
+
+    canCastleQueenSide[0] = false;
+    canCastleQueenSide[1] = false;
+    canCastleKingSide[0] = false;
+    canCastleKingSide[1] = false;
+    if(result.at(castlingRights) != "-"){
+        for(char c: result.at(castlingRights)) {
+            if(c == 'K')
+                canCastleKingSide[1] = true;
+            if(c == 'Q')
+                canCastleQueenSide[1] = true;
+            if(c == 'k')
+                canCastleKingSide[0] = true;
+            if(c == 'q')
+                canCastleQueenSide[0] = true;
         }
     }
 
@@ -83,7 +110,6 @@ Board::Board(Board const &b) {
             board.at(i).at(j) = b.board.at(i).at(j);
         }
     }
-    //::copy(b.board.begin(),b.board.end(),std::back_inserter(board));
     turn = b.turn;
     whiteKingPosition = b.whiteKingPosition;
     blackKingPosition = b.blackKingPosition;
@@ -154,7 +180,7 @@ std::vector<Move> Board::getLegalMoves(unsigned int x, unsigned int y) const{
             break;
         }
         case KING: {
-            getKingMoves(result,piece,board,x,y);
+            getKingMoves(result,piece,*this,x,y);
             break;
         }
         case EMPTY: {
@@ -252,11 +278,28 @@ bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE p
     bool hideEnPassantPawns = true;
     Piece temp = board.at(x0).at(y0);
     Piece next = board.at(x1).at(y1);
+    //TODO fix castling
     if(move.castle) {
-        //Piece oldRook = next; Commented to avoid copy, but in this execution path, next is a rook
-        board.at(x1).at(y1) = Piece();
-        board.at(x0).at(y0) = Piece();
+        Piece oldRook;
 
+        board.at(x0).at(y0) = Piece();
+        board.at(x1).at(y1) = temp;
+        if(y1 < y0) { //rook to left
+            oldRook = board.at(x1).at(0);
+            board.at(x1).at(0) = Piece();
+            board.at(x1).at(y1+1) = oldRook;
+        }
+        else{ //rook to right
+            oldRook = board.at(x1).at(7);
+            board.at(x1).at(7) = Piece();
+            board.at(x1).at(y1-1) = oldRook;
+
+        }
+        updatePieceTrackers(temp,x1,y1);
+        lastFrom = Move(x0,y0);
+        lastTo = Move(x1,y1);
+
+        /*
         if((x1 == 0 && y1 == 0) || (x1 == 7 && y1 == 0)){
             board.at(x0).at(y0-2) = temp;
             board.at(x0).at(y0-1) = next;
@@ -277,6 +320,7 @@ bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE p
             lastFrom = Move(x0,y0);
             lastTo = Move(x1,y1);
         }
+         */
 
     }
     else {
@@ -310,7 +354,7 @@ bool Board::executeMove(unsigned int x0,unsigned int y0, Move move, PIECE_TYPE p
     auto opposingKingPos = turn == 1?blackKingPosition : whiteKingPosition;
     board.at(opposingKingPos.first).at(opposingKingPos.second).setUnderAttack(check);
     turn = turn == 1? 0 : 1;
-
+    updateCastlingRights(x0,y0,x1,y1);
     if(hideEnPassantPawns)
         hideEnPassant();
     return true;
@@ -495,6 +539,32 @@ std::vector<std::pair<Move,Move>> Board::generateAllMoves(const Board& b,int pla
     return result;
 
 }
+
+void Board::updateCastlingRights(unsigned int x0,unsigned int y0, unsigned int x1, unsigned y1) {
+    Piece temp = board.at(x1).at(y1);
+    if(temp.getType() == KING) {
+        canCastleKingSide[temp.getPlayer()] = false;
+        canCastleQueenSide[temp.getPlayer()] = false;
+    }
+    else if(temp.getType() == ROOK) {
+        if(y0 == 0) {
+            canCastleQueenSide[temp.getPlayer()] = false;
+        }
+        else{
+            canCastleKingSide[temp.getPlayer()] = false;
+        }
+    }
+}
+
+bool Board::canCastleKS(int player) const{
+    return canCastleKingSide[player];
+}
+
+bool Board::canCastleQS(int player) const{
+    return canCastleQueenSide[player];
+}
+
+
 
 
 

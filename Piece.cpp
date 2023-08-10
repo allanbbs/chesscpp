@@ -9,31 +9,35 @@ PIECE_TYPE Piece::getType() const {
 }
 
 std::ostream& operator<<(std::ostream &o, const Piece& p) {
-    std::string c;
+    char c;
     switch (p.getType()) {
         case PAWN:
-            c = p.isEnPassantExposed()? "X" : "P";
+            c = p.isEnPassantExposed()? 'X' : 'P';
             break;
         case BISHOP:
-            c = "B";
+            c = 'B';
             break;
         case ROOK:
-            c = "R";
+            c = 'R';
             break;
         case KNIGHT:
-            c = "N";
+            c = 'N';
             break;
         case QUEEN:
-            c = "Q";
+            c = 'Q';
             break;
         case KING:
-            c = "K";
+            c = 'K';
             break;
         case EMPTY:
-            c = "0";
+            c = '0';
             break;
     }
-    o << c;
+    std::string result;
+    result += (p.player == 1? c : std::tolower(c));
+    o << result;
+    std::string x;
+
     return o;
 }
 
@@ -42,7 +46,7 @@ int Piece::getPlayer() const {
 }
 
 Piece::Piece() {
-    type =  EMPTY;
+    type = EMPTY;
     player = 0;
 }
 

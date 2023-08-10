@@ -122,7 +122,7 @@ void getKnightMoves(std::vector<Move> &result,const Piece& knight,const std::vec
 bool verifyPawnPosition(const std::vector<std::vector<Piece>>& board,std::vector<Move> &r,const Piece& pawn, const Piece& other,unsigned int x,unsigned int y,bool isDiagonal,bool doubleMove,int enPassantOffset) {
     Move m = Move(x,y);
     if(other.getType() == EMPTY && !isDiagonal) {
-        if(doubleMove && !pawn.hasMoved())
+        if(doubleMove)
             m.enPassantExposed = true;
         r.push_back(m);
         return true;
@@ -184,7 +184,44 @@ bool verifyKingPosition(std::vector<Move> &r,const Piece& king, const Piece& oth
         return false;
 }
 
-void getKingMoves(std::vector<Move> &result,const Piece& king,const std::vector<std::vector<Piece>> &board,unsigned int x, unsigned int y, bool withCastle) {
+inline bool isWithinBounds(unsigned int x, unsigned int y) {
+    if (x >= 0 && x < 8) {
+        return (y >= 0 && y < 8);
+    } else {
+        return false;
+    }
+}
+
+void checkCastling(std::vector<Move> &result, const Piece& king,const Board &board, unsigned int x, unsigned int y, int direction) {
+    if (!board.canCastle(king.getPlayer()) || king.isUnderAttack() || king.hasMoved()) return;
+    bool canCastleSide = (direction == -1 ? board.canCastleQS(king.getPlayer()) : board.canCastleKS(king.getPlayer()));
+    if(!canCastleSide) return;
+
+    bool foundRookFirst = true;
+    bool isInBetweenAttacked = false;
+    int col;
+    //search in a direction to check if path to rook is free
+    for (col = y + direction; col >= 0 && col < 8; col += direction) {
+        Piece temp = board.getBoard().at(x).at(col);
+        if (temp.getType() != EMPTY && temp.getType() != ROOK) {
+            foundRookFirst = false;
+            break;
+        }
+        else if (temp.getType() == ROOK) break;
+    }
+
+    int checkOffset = direction > 0 ? 1 : -1;
+    if(!isWithinBounds(x,y+checkOffset) || !isWithinBounds(x,y+2*checkOffset))
+        return;
+
+    isInBetweenAttacked = verifyCheck(board.getBoard(), x, y + checkOffset, king.getPlayer()) || verifyCheck(board.getBoard(), x, y + 2 * checkOffset, king.getPlayer());
+
+    unsigned int finalPos = y + 2*checkOffset;
+    if (!isInBetweenAttacked && (finalPos >= 0 && finalPos < 8) && foundRookFirst)
+        result.emplace_back(x, finalPos, true);
+}
+
+void getKingMoves(std::vector<Move> &result,const Piece& king,const Board &board,unsigned int x, unsigned int y, bool withCastle) {
     std::vector<std::pair<int,int>> possibleMoves = {
             {x+1,y},
             {x-1,y},
@@ -199,53 +236,13 @@ void getKingMoves(std::vector<Move> &result,const Piece& king,const std::vector<
     //normal moves
     for(auto& pair : possibleMoves){
         if(pair.first >= 0 && pair.first < 8 && pair.second >= 0 && pair.second < 8) {
-            verifyKingPosition(result,king,board.at(pair.first).at(pair.second),pair.first,pair.second);
+            verifyKingPosition(result,king,board.getBoard().at(pair.first).at(pair.second),pair.first,pair.second);
         }
     }
     if(!withCastle)
         return;
-    //castling
-    if(king.hasMoved() || king.isUnderAttack()) // only a king that has not moved and is not under Attack can castle
-        return;
-
-    bool foundRookFirst = true;
-    int col = 0;
-    for(col = y+1; col < 8 ; col++) {
-        Piece temp = board.at(x).at(col);
-        if(temp.getType() != EMPTY && temp.getType() != ROOK){
-            foundRookFirst = false;
-            break;
-        }
-        else if(temp.getType() == ROOK)
-            break;
-    }
-    bool isInBetweenAttacked = false;
-    if(y - col < 0) { //rook is to the right
-        isInBetweenAttacked = verifyCheck(board,x,y+1,king.getPlayer()) || verifyCheck(board,x,y+2,king.getPlayer());
-    }
-    else{
-        isInBetweenAttacked = verifyCheck(board,x,y-1,king.getPlayer()) || verifyCheck(board,x,y-2,king.getPlayer());
-    }
-    if(col < 8 && foundRookFirst && !board.at(x).at(col).hasMoved() && !isInBetweenAttacked)
-        result.emplace_back(x,col,true);
-    foundRookFirst = true;
-    for(col = y-1; col >= 0 ; col--) {
-        Piece temp = board.at(x).at(col);
-        if(temp.getType() != EMPTY && temp.getType() != ROOK){
-            foundRookFirst = false;
-            break;
-        }
-        else if(temp.getType() == ROOK)
-            break;
-    }
-    if(y - col < 0) { //rook is to the right
-        isInBetweenAttacked = verifyCheck(board,x,y+1,king.getPlayer()) || verifyCheck(board,x,y+2,king.getPlayer());
-    }
-    else{
-        isInBetweenAttacked = verifyCheck(board,x,y-1,king.getPlayer()) || verifyCheck(board,x,y-2,king.getPlayer());
-    }
-    if(col>= 0 && foundRookFirst && !board.at(x).at(col).hasMoved() && !isInBetweenAttacked)
-        result.emplace_back(x,col,true);
+    checkCastling(result,king,board,x,y,1);
+    checkCastling(result,king,board,x,y,-1);
 
 }
 

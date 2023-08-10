@@ -63,6 +63,14 @@ public:
 
     void loadFEN(std::string moveSequence);
 
+    bool canCastle(int player) const{
+        return canCastleKingSide[player] || canCastleQueenSide[player];
+    }
+
+    bool canCastleQS(int player) const;
+
+    bool canCastleKS(int player) const;
+
 private:
     void initBoard();
     std::vector<std::vector<Piece>> board;
@@ -76,6 +84,9 @@ private:
     Move lastTo = Move(0,0);
 
     bool canCastleKingSide[2] = {true,true};
+    bool canCastleQueenSide[2] = {true,true};
+
+    void updateCastlingRights(unsigned int x0,unsigned int y0, unsigned int x1, unsigned y1);
 
 
 

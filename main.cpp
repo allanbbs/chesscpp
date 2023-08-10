@@ -56,6 +56,7 @@ int main() {
     }
 
     Board b = Board();
+    b.loadFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
     while(true) {
         ssize_t readBytes = read(new_socket, buffer, 4*6);
         if(readBytes == -1) {
@@ -86,11 +87,11 @@ int main() {
             break;
         bool canMove = b.move(x0, y0, x1, y1, static_cast<PIECE_TYPE>(promotionType));
         if(canMove && !b.isGameOver()){
-            auto res = Board::minimax(b,4,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
+            /*auto res = Board::minimax(b,4,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
             Move m1 = res.second.first;
             Move m2 = res.second.second;
             b.moveWithoutVerifying(m1.x,m1.y,m2);
-            std::cout << "(" << m1.x << "," << m1.y << ") -> (" << m2.x << "," << m2.y << ")" <<  std::endl;
+            std::cout << "(" << m1.x << "," << m1.y << ") -> (" << m2.x << "," << m2.y << ")" <<  std::endl;*/
         }
         std::string jsonString = b.toJSON();
         const char* json = jsonString.c_str();

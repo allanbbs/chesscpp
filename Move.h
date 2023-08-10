@@ -27,8 +27,8 @@ public:
             };
     }
 
-    unsigned int x = 7;
-    unsigned int y = 7;
+    unsigned int x = 0;
+    unsigned int y = 0;
     bool castle = false;
     bool enPassantExposed = false;
     bool enPassantCapture = false;

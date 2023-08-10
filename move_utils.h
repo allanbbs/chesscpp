@@ -29,7 +29,9 @@ void getPawnMoves(std::vector<Move> &result,const Piece& pawn,const std::vector<
 
 
 bool verifyKingPosition(std::vector<Move> &r,const Piece& king, const Piece& other,unsigned int x,unsigned int y);
-void getKingMoves(std::vector<Move> &result,const Piece& king,const std::vector<std::vector<Piece>> &board,unsigned int x, unsigned int y, bool withCastle = true);
+inline bool isWithinBounds(unsigned int x, unsigned int y);
+void checkCastling(std::vector<Move> &result, const Piece& king, const Board &board, unsigned int x, unsigned int y, int direction);
+void getKingMoves(std::vector<Move> &result,const Piece& king,const Board &board,unsigned int x, unsigned int y, bool withCastle = true);
 void getKingMovesBasic(std::vector<Move> &result,const Piece& king,const std::vector<std::vector<Piece>> &board,unsigned int x, unsigned int y);
 
 /*
