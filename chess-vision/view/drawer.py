@@ -31,7 +31,8 @@ SPRITES = {
         5:pygame.transform.scale(pygame.image.load("sprites/b_king.png"),(125,125)) 
     },
     "black" : pygame.transform.scale(pygame.image.load("sprites/square_brown_dark.png"),(125,125)),
-    "white" : pygame.transform.scale(pygame.image.load("sprites/square_brown_light.png"),(125,125))
+    "white" : pygame.transform.scale(pygame.image.load("sprites/square_brown_light.png"),(125,125)),
+    "grey" :  pygame.transform.scale(pygame.image.load("sprites/square_gray_light.png"),(125,125))
 }
 
 
@@ -39,6 +40,7 @@ class Drawer:
 
     def __init__(self,width,height,socket):
         self.state = None
+        self.gameOver = False
         self.turn = 1
         self.socket = socket
         self.board = None
@@ -51,6 +53,8 @@ class Drawer:
         self.board_size = None
         self.resolution = None
         self.selected = None
+        self.lastFrom = None
+        self.lastTo = None
         pygame.display.set_caption("Chess")
 
     def add_board(self,board):
@@ -79,12 +83,41 @@ class Drawer:
                 y,x = event.pos
                 y //= self.resolution
                 x //= self.resolution
-                self.selected = None
-                for i in range(8):
-                    for j in range(8):
-                        if x == i and j == y and self.board[i][j]["type"] != 6:
-                            self.selected = (x,y)
-            if event.type == pygame.MOUSEBUTTONUP:
+                #self.selected = None
+                if not self.selected:
+                    for i in range(8):
+                        for j in range(8):
+                            if x == i and j == y and self.board[i][j]["type"] != 6:
+                                self.selected = (x,y)
+                else:
+                    if (0 <= x < 8) and (0 <= y < 8):
+                        integers = [self.selected[0], self.selected[1], x, y, self.turn,4]
+                        # Pack the integers into a binary format
+                        message = struct.pack('!6i', *integers) # ! denotes network byte order, 5I denotes five unsigned integers
+                        # Send the packed message to the server
+                        self.socket.sendall(message)
+                        oldBoard = copy.deepcopy(self.board)
+                        obj = json.loads(self.socket.recv(10000).decode("utf-8"))
+                        self.state = obj[0]
+                        print(self.state)
+                        newBoard = obj[1]
+                        #newBoard = json.loads(newBoard)
+                        if self.state["state"] != "progress":
+                            print("Stalemate!" if self.state["state"] == "stalemate" else "Checkmate!","White" if self.state["winner"] == 1 else "Black","won!")
+                            self.gameOver = True
+                            #pygame.quit()
+                        if self.state["lastTo"] and self.state["lastFrom"]:
+                            self.lastTo = self.state["lastTo"]
+                            self.lastFrom = self.state["lastFrom"]
+                        
+                        for i in range(8):
+                            for j in range(8):
+                                self.board[i][j] = newBoard[i*8 + j]
+                        if self.selected and self.board != oldBoard:
+                            self.turn = 1 if self.turn == 0 else 0
+                            print("Now playing:","White" if self.turn ==1 else "Black")
+                        self.selected = None
+            '''if event.type == pygame.MOUSEBUTTONUP:
                 y,x = event.pos
                 y //= self.resolution
                 x //= self.resolution
@@ -113,7 +146,7 @@ class Drawer:
                     self.selected = None
                     
 
-                self.selected = None
+                self.selected = None'''
                 
 
         return False
@@ -127,7 +160,11 @@ class Drawer:
                 
                 #rect = pygame.Rect(y, x, self.resolution-1, self.resolution-1)
                 #pygame.draw.rect(self.window,(125, 135, 150) if (i + j) % 2 == 0 else (233, 236, 239), rect)
-                self.window.blit(SPRITES["white"] if (i + j) % 2 == 0 else SPRITES["black"],(y,x))
+               
+                if self.lastTo and self.lastFrom and ((self.lastTo[0] == i and self.lastTo[1] == j) or (self.lastFrom[0] == i and self.lastFrom[1] == j)):
+                    self.window.blit(SPRITES["grey"],(y,x))
+                else:
+                    self.window.blit(SPRITES["white"] if (i + j) % 2 == 0 else SPRITES["black"],(y,x))
                 if self.board[i][j]["type"] != 6:
                     temp = self.board[i][j]
                     type = PIECE_TYPE.get(temp["type"])

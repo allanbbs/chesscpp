@@ -42,9 +42,9 @@ def main():
     d = drawer.Drawer(1000,1000,client_socket)
     d.add_board(board)
     while True:
-
-        if d.process_events():
-            break
+        if not d.gameOver:
+            if d.process_events():
+                break
         d.print_board()
         d.update()
 
