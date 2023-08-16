@@ -43,6 +43,7 @@ bool canAttack(const std::vector<std::vector<Piece>>& board,
                const std::vector<Move>& rookMoves,
                const std::vector<Move>& knightMoves,
                const std::vector<Move>& kingMoves,
+               Piece attacked,
                unsigned int x1,
                unsigned int y1
                );

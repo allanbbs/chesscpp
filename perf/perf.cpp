@@ -29,12 +29,14 @@ void divide(Board& board, int depth) {
 
     int totalNodes = 0;
     auto legalMoves = Board::generateAllMoves(board, board.getTurn());
-    std::sort(legalMoves.begin(),legalMoves.end(),[](Move a, Move b){
+    /*std::sort(legalMoves.begin(),legalMoves.end(),[](Move a, Move b){
         if (a.x < b.x) return true;
         if (a.x > b.x) return false;
         return a.y < b.y; // If x values are equal, compare by y
-    });
-
+    });*/
+    /*for(auto b: legalMoves){
+        std::cout << "\t" << toChessNotation(b.first.x,b.first.y,EMPTY) << toChessNotation(b.second.x,b.second.y,b.second.promotion_type) << std::endl;
+    }*/
     for (const auto& movePair : legalMoves) {
         Move move = movePair.second;
         unsigned int x0 = movePair.first.x;
@@ -56,18 +58,21 @@ int main() {
 
     //at start, test d1d2
     Board board = Board();
-    board.loadFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+    board.loadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     board.display();
     int depth = 2;
     //(board,1);
-    divide(board,1);
-    divide(board,2);
+    //divide(board,1);
+    //divide(board,2);
     //divide(board,3);
+    //divide(board,4);
 
     //std::cout << "Calculated " << perft(board,1) << " nodes!" << std::endl;
     //std::cout << "Calculated " << perft(board,2) << " nodes!" << std::endl;
     //std::cout << "Calculated " << perft(board,3) << " nodes!" << std::endl;
     //std::cout << "Calculated " << perft(board,4) << " nodes!" << std::endl;
+    std::cout << "Calculated " << perft(board,5) << " nodes!" << std::endl;
+    //std::cout << "Calculated " << perft(board,6) << " nodes!" << std::endl;
     //Stockfish: 4865609
     //chesscpp: 5019241
     return 0;

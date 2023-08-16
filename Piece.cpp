@@ -30,7 +30,7 @@ std::ostream& operator<<(std::ostream &o, const Piece& p) {
             c = 'K';
             break;
         case EMPTY:
-            c = '0';
+            c = ' ';
             break;
     }
     std::string result;

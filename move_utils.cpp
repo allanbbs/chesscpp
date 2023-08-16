@@ -122,8 +122,20 @@ void getKnightMoves(std::vector<Move> &result,const Piece& knight,const std::vec
 bool verifyPawnPosition(const std::vector<std::vector<Piece>>& board,std::vector<Move> &r,const Piece& pawn, const Piece& other,unsigned int x,unsigned int y,bool isDiagonal,bool doubleMove,int enPassantOffset) {
     Move m = Move(x,y);
     if(other.getType() == EMPTY && !isDiagonal) {
-        if(doubleMove)
+        if(x == 0 || x == 7) {
+            auto promotionMoves = Move::getPromotionMoves(x,y);
+            for(auto move : promotionMoves)
+                r.push_back(move);
+            return false;
+        }
+        if(doubleMove){
+            if(!isWithinBounds(x + (pawn.getPlayer() == 1? 1 : -1),y)) //x received here already has offset, so we need the reverse to verify the middle
+                return true;
+            Piece middle = board.at(x + (pawn.getPlayer() == 1? 1 : -1)).at(y);
+            if(middle.getType() != EMPTY)
+                return true;
             m.enPassantExposed = true;
+        }
         r.push_back(m);
         return true;
     }
@@ -211,13 +223,15 @@ void checkCastling(std::vector<Move> &result, const Piece& king,const Board &boa
     }
 
     int checkOffset = direction > 0 ? 1 : -1;
-    if(!isWithinBounds(x,y+checkOffset) || !isWithinBounds(x,y+2*checkOffset))
+    if(!foundRookFirst || !isWithinBounds(x,y+checkOffset) || !isWithinBounds(x,y+2*checkOffset))
         return;
+    bool f1 = verifyCheck(board.getBoard(), x, y + checkOffset, king.getPlayer());
+    bool f2 = verifyCheck(board.getBoard(), x, y + 2 * checkOffset, king.getPlayer());
+    isInBetweenAttacked = f1 || f2;
 
-    isInBetweenAttacked = verifyCheck(board.getBoard(), x, y + checkOffset, king.getPlayer()) || verifyCheck(board.getBoard(), x, y + 2 * checkOffset, king.getPlayer());
-
+    //std::cout<<"Castle check:" << "(" << f1 << "," << f2 << ")" << "!" << std::endl;
     unsigned int finalPos = y + 2*checkOffset;
-    if (!isInBetweenAttacked && (finalPos >= 0 && finalPos < 8) && foundRookFirst)
+    if (!isInBetweenAttacked && isWithinBounds(x,finalPos))
         result.emplace_back(x, finalPos, true);
 }
 
@@ -279,10 +293,10 @@ bool canAttack(const std::vector<std::vector<Piece>>& board,
                const std::vector<Move>& rookMoves,
                const std::vector<Move>& knightMoves,
                const std::vector<Move>& kingMoves,
+               Piece attacked,
                unsigned int x1,
                unsigned int y1
                ){
-    Piece attacked = board.at(x1).at(y1);
 
     for(Move m: bishopMoves){
         Piece temp = board.at(m.x).at(m.y);
@@ -290,8 +304,16 @@ bool canAttack(const std::vector<std::vector<Piece>>& board,
             return true;
         }
         else if(temp.getType() == PAWN){
-            if(temp.getPlayer() != attacked.getPlayer() && (abs((int)m.x-(int)x1)==1 && abs((int)m.y-(int)y1) == 1)){
-                return true;
+            if(temp.getPlayer() != attacked.getPlayer()){
+                if(temp.getPlayer() == 1) {
+                    if((int)m.x - (int)x1 == 1 && abs((int)m.y-(int)y1) == 1)
+                        return true;
+                }
+                else{
+                    if((int)m.x - (int)x1 == -1 && abs((int)m.y-(int)y1) == 1)
+                        return true;
+                }
+
             }
         }
     }
@@ -312,20 +334,7 @@ bool canAttack(const std::vector<std::vector<Piece>>& board,
 
     for(Move m: kingMoves){
         Piece temp = board.at(m.x).at(m.y);
-        if(temp.getType() == PAWN){
-            if(temp.getPlayer() != attacked.getPlayer() && (abs((int)m.x-(int)x1)==1 && abs((int)m.y-(int)y1) == 1)){
-                if(temp.getPlayer() == 1) {
-                    if(x1 < m.x)
-                        return true;
-                }
-                else{
-                    if(x1 > m.x)
-                        return true;
-                }
-
-            }
-        }
-        else if(temp.getType() == KING && temp.getPlayer() != attacked.getPlayer()){
+        if(temp.getType() == KING && temp.getPlayer() != attacked.getPlayer()){
             return true;
         }
     }
@@ -345,21 +354,12 @@ bool verifyCheck(Board *board,int player) {
     getRookMoves(rookMoves,kingPiece,board->getBoard(),kingPosition.first,kingPosition.second);
     getKnightMoves(knightMoves,kingPiece,board->getBoard(),kingPosition.first,kingPosition.second);
     getKingMovesBasic(kingMoves,kingPiece,board->getBoard(),kingPosition.first,kingPosition.second);
-    for(int i = 0; i < 8; i++){
-        for(int j = 0; j < 8; j++) {
-            Piece temp = board->getBoard().at(i).at(j);
-            if(temp.getType() != EMPTY && temp.getPlayer() != board->getBoard().at(kingPosition.first).at(kingPosition.second).getPlayer()) {
-                if(canAttack(board->getBoard(),bishopMoves,rookMoves,knightMoves,kingMoves,kingPosition.first,kingPosition.second)){
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
+    return canAttack(board->getBoard(),bishopMoves,rookMoves,knightMoves,kingMoves,kingPiece,kingPosition.first,kingPosition.second);
 }
 
 bool verifyCheck(const std::vector<std::vector<Piece>>& board,unsigned int x0,unsigned int y0,int player) {
     auto kingPiece = board.at(x0).at(y0);
+    int oldplayer = kingPiece.getPlayer();
     if(kingPiece.getType() == EMPTY) {
         kingPiece.setPlayer(player);
         kingPiece.setType(PAWN);
@@ -374,17 +374,9 @@ bool verifyCheck(const std::vector<std::vector<Piece>>& board,unsigned int x0,un
     getRookMoves(rookMoves,kingPiece,board,x0,y0);
     getKnightMoves(knightMoves,kingPiece,board,x0,y0);
     getKingMovesBasic(kingMoves,kingPiece,board,x0,y0); // change with notBasic if problems later
-    for(int i = 0; i < 8; i++){
-        for(int j = 0; j < 8; j++) {
-            Piece temp = board.at(i).at(j);
-            if(temp.getType() != EMPTY && temp.getPlayer() != kingPiece.getPlayer()) {
-                if(canAttack(board,bishopMoves,rookMoves,knightMoves,kingMoves,x0,y0)){
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
+    bool verify = canAttack(board,bishopMoves,rookMoves,knightMoves,kingMoves,kingPiece,x0,y0);
+
+    return verify;
 }
 
 
@@ -396,6 +388,8 @@ void filterInCheckMoves(std::vector<Move>& result, Board& b,unsigned int x, unsi
         auto oldBoard = b.getBoard();
         auto oldW = b.getWhiteKingPosition();
         auto oldB = b.getBlackKingPosition();
+        auto oldCanCastleQS = b.canCastleQueenSide;
+        auto oldCanCastleKS = b.canCastleKingSide;
         bool moved = b.executeMoveWithoutVerifying(x,y,*it);
         if (verifyCheck(&b,b.getTurn() == 1? 0 : 1)) {
             it = result.erase(it);
@@ -406,6 +400,10 @@ void filterInCheckMoves(std::vector<Move>& result, Board& b,unsigned int x, unsi
         b.setBoard(oldBoard);
         b.setBlackKingPosition(oldB);
         b.setWhiteKingPosition(oldW);
+        b.canCastleQueenSide[0] = oldCanCastleQS[0];
+        b.canCastleQueenSide[1] = oldCanCastleQS[1];
+        b.canCastleKingSide[0] = oldCanCastleKS[0];
+        b.canCastleKingSide[1] = oldCanCastleKS[1];
 
     }
 }

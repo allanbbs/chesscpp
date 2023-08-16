@@ -8,7 +8,7 @@
 #include "Board.h"
 #include "move_utils.h"
 #include "helper.h"
-
+#include "static_evaluation.h"
 
 const std::vector<std::vector<Piece>> &Board::getBoard() const {
     return board;
@@ -27,14 +27,19 @@ void Board::setTurn(int t) {
 }
 
 void Board::display() const {
-    for(auto it = board.begin(); it != board.end(); it++) {
-        std::string line;
+    std::string top = "+---+---+---+---+---+---+---+---+\n";
+    int i = 8;
+    for(auto it = board.begin(); it != board.end(); it++,i--) {
+        std::ostringstream line;
         for(auto it2 = it->begin(); it2 != it->end(); it2++) {
-            std::cout << *it2 << " ";
+            line << "| " << *it2 << " ";
         }
-        std::cout << '\n';
+        line << "|  " << i << "\n";
+        line << "+---+---+---+---+---+---+---+---+\n";
+        top += line.str();
     }
-    std::cout.flush();
+    top += "  a   b   c   d   e   f   g   h\n";
+    std::cout << top << std::endl;
 }
 
 Board::Board() {
@@ -231,6 +236,7 @@ bool Board::move(unsigned int x0, unsigned int y0, unsigned int x1, unsigned int
     if(allMovesRemaining.empty()) {
         if(board.at(opposingKingPos.first).at(opposingKingPos.second).isUnderAttack()) {
             std::cout<<"Checkmate"<<std::endl;
+            winner = turn == 1? 0 : 1;
             checkmate = true;
         } else{
             std::cout<<"Stalemate"<<std::endl;
@@ -253,6 +259,7 @@ bool Board::moveWithoutVerifying(unsigned int x0, unsigned int y0, Move move) {
     if(allMovesRemaining.empty()) {
         if(board.at(opposingKingPos.first).at(opposingKingPos.second).isUnderAttack()) {
             std::cout<<"Checkmate"<<std::endl;
+            winner = turn == 1? 0 : 1;
             checkmate = true;
         } else{
             std::cout<<"Stalemate"<<std::endl;
@@ -364,8 +371,14 @@ std::string Board::toJSON() const {
     std::string result = "[";
     std::ostringstream st;
     st << R"({"state":")"<< (stalemate? "stalemate" : (checkmate? "checkmate" : "progress")) << "\",";
+    st << "\"lastFrom\":" << lastFrom << ",";
+    st << "\"lastTo\":" << lastTo << ",";
     st << "\"winner\":"<< winner << "},";
     result += st.str();
+    result.replace(result.find("("),1,"[");
+    result.replace(result.find(")"),1,"]");
+    result.replace(result.find("("),1,"[");
+    result.replace(result.find(")"),1,"]");
     result += "[";
     for(int i = 0; i < 8;i++) {
         for(int j = 0; j < 8; j++) {
@@ -447,18 +460,8 @@ bool Board::isStalemate() const {
 
 double Board::evaluate() const{
     double boardScore = 0;
-    for(auto& row : board) {
-        for(auto& piece : row) {
-            if(piece.getType() == EMPTY)
-                continue;
-            double value = PIECE_VALUE.at(piece.getType());
-            if(piece.getPlayer() == turn) {
-                boardScore += value;
-            } else {
-                boardScore -= value;
-            }
-        }
-    }
+    boardScore += calculateMaterialScore(*this);
+    boardScore += calculatePieceSquare(*this);
     if(isGameOver()) {
         if(winner == -1)
             boardScore += 0;

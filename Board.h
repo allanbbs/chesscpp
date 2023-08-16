@@ -71,6 +71,10 @@ public:
 
     bool canCastleKS(int player) const;
 
+    Move lastTo = Move(0,0);
+    Move lastFrom = Move(0,0);
+    bool canCastleQueenSide[2] = {true,true};
+    bool canCastleKingSide[2] = {true,true};
 private:
     void initBoard();
     std::vector<std::vector<Piece>> board;
@@ -79,12 +83,6 @@ private:
     std::pair<unsigned int,unsigned int> blackKingPosition;
     bool checkmate = false;
     bool stalemate = false;
-
-    Move lastFrom = Move(0,0);
-    Move lastTo = Move(0,0);
-
-    bool canCastleKingSide[2] = {true,true};
-    bool canCastleQueenSide[2] = {true,true};
 
     void updateCastlingRights(unsigned int x0,unsigned int y0, unsigned int x1, unsigned y1);
 
