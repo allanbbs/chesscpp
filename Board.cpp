@@ -461,7 +461,7 @@ bool Board::isStalemate() const {
 double Board::evaluate() const{
     double boardScore = 0;
     boardScore += calculateMaterialScore(*this);
-    boardScore += calculatePieceSquare(*this);
+    //boardScore += calculatePieceSquare(*this);
     if(isGameOver()) {
         if(winner == -1)
             boardScore += 0;

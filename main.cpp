@@ -57,6 +57,10 @@ int main() {
 
     Board b = Board();
     //b.loadFEN("r3k3/p1ppqpbr/bn2Pnp1/1N2N3/1p2P3/5Q2/PPPBBPpP/R3K2R w KQq - 0 3");
+    //b.loadFEN("3rr1k1/pp3ppp/2pn4/q3N2Q/1b1P4/1B2R3/PP3PPP/R5K1 b - - 0 1"); // yt shorts line
+    b.loadFEN("r5k1/pp3ppp/1b2r3/1B1p4/Q3n3/2PN4/PP2RPPq/3R2K1 w - - 0 1"); // yt shorts line
+    //b.setTurn(1);
+    //int aiPlayer = 1;
     while(true) {
         ssize_t readBytes = read(new_socket, buffer, 4*6);
         if(readBytes == -1) {
@@ -85,6 +89,8 @@ int main() {
 
         if(x1 == -1 && y1 == -1 && player == -1)
             break;
+
+
         bool canMove = b.move(x0, y0, x1, y1, static_cast<PIECE_TYPE>(promotionType));
         if(canMove && !b.isGameOver()){
             auto res = Board::minimax(b,4,-std::numeric_limits<double>::max(),+std::numeric_limits<double>::max(),false);
@@ -95,6 +101,8 @@ int main() {
             b.lastFrom = m2;
             std::cout << "(" << m1.x << "," << m1.y << ") -> (" << m2.x << "," << m2.y << ")" <<  std::endl;
         }
+
+
         std::string jsonString = b.toJSON();
         const char* json = jsonString.c_str();
         if(b.isGameOver()) {
